@@ -11,6 +11,38 @@ npm run dev
 
 Acesse: `http://localhost:3000`
 
+## Backend/API (Etapa 6)
+
+Escolha de banco: **SQLite local** para o MVP, pois simplifica a execução local e evita dependências externas. Em produção, basta trocar `DATABASE_URL` para um serviço Postgres/Supabase quando necessário.
+
+### Como rodar
+
+```bash
+npm run dev:api
+```
+
+Para subir frontend + backend ao mesmo tempo:
+
+```bash
+npm run dev:all
+```
+
+### Variáveis de ambiente
+
+Crie um arquivo `.env` (opcional) com:
+
+```bash
+PORT=4000
+DATABASE_URL=data/leads.db
+DOWNLOAD_FILE=/conferidor-nf-vs-extrato.xlsx
+TOKEN_EXPIRY_HOURS=24
+```
+
+### Endpoints
+
+- `POST /api/leads`
+- `GET /api/download/:token`
+
 ## Formulário
 
 O formulário envia um `POST` para `/api/leads` com o payload:
