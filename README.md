@@ -11,16 +11,6 @@ npm run dev
 
 Acesse: `http://localhost:3000`
 
-## Ajuste da planilha (.xlsx)
-
-O arquivo da planilha **não** é versionado. Após o merge do PR, coloque-o manualmente em `public/`.
-
-1. Copie o arquivo `.xlsx` para `public/`.
-2. Use o nome sugerido `conferidor-nf-vs-extrato.xlsx`.
-3. (Opcional) Atualize qualquer referência ao nome do arquivo se necessário.
-
-Um placeholder com instruções está disponível em `public/README.md`.
-
 ## Formulário
 
 O formulário envia um `POST` para `/api/leads` com o payload:
