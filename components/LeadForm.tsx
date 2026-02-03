@@ -74,7 +74,7 @@ export default function LeadForm() {
           <input id="email" name="email" type="email" required autoComplete="email" />
         </div>
         <label>
-          <input id="consent" name="consent" type="checkbox" />
+          <input id="consent" name="consent" type="checkbox" required />
           {' '}Eu concordo em receber comunicações da FiscalVerify.
         </label>
         <div className="form-actions">
