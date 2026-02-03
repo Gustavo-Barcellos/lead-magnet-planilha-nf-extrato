@@ -27,6 +27,8 @@ Para subir frontend + backend ao mesmo tempo:
 npm run dev:all
 ```
 
+> Em desenvolvimento, o Next.js faz proxy das rotas `/api/*` para `http://localhost:4000` (configurado em `next.config.js`).
+
 ### Variáveis de ambiente
 
 Crie um arquivo `.env` (opcional) com:
@@ -37,6 +39,12 @@ DATABASE_URL=data/leads.db
 DOWNLOAD_FILE=/conferidor-nf-vs-extrato.xlsx
 TOKEN_EXPIRY_HOURS=24
 ```
+
+### Banco de dados e persistência
+
+- O SQLite fica salvo em `data/leads.db` (criado automaticamente na primeira execução).
+- Os registros persistem entre reinícios enquanto o arquivo `data/leads.db` existir.
+- Para inspecionar os leads localmente: `sqlite3 data/leads.db "SELECT * FROM leads;"`.
 
 ### Endpoints
 
