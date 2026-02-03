@@ -1,92 +1,138 @@
 import fs from 'fs';
 import path from 'path';
-import Database from 'better-sqlite3';
+import { Pool } from 'pg';
 import { DATABASE_URL } from './config';
 
 export type LeadRecord = {
   id: number;
   name: string;
   email: string;
-  consent: number;
+  consent: boolean;
   created_at: string;
   download_token: string;
   download_expiry: string;
-  email_sent: number;
-  opt_in_confirmed: number;
+  email_sent: boolean;
+  opt_in_confirmed: boolean;
 };
 
-const isFileDatabase = DATABASE_URL !== ':memory:' && !DATABASE_URL.startsWith('file:');
-if (isFileDatabase) {
-  const dir = path.dirname(DATABASE_URL);
-  fs.mkdirSync(dir, { recursive: true });
-}
+type LeadInsert = Omit<LeadRecord, 'id'>;
 
-const db = new Database(DATABASE_URL);
+type LeadStore = {
+  insertLead: (lead: LeadInsert) => Promise<LeadRecord>;
+  findLeadByToken: (token: string) => Promise<LeadRecord | undefined>;
+  clearLeads: () => Promise<void>;
+};
 
-db.pragma('journal_mode = WAL');
+const isMemory = DATABASE_URL === 'memory' || DATABASE_URL === '';
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS migrations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    executed_at TEXT NOT NULL
-  );
-`);
+const migrationsPath = path.join(process.cwd(), 'api', 'migrations', '001_create_leads.sql');
 
-const migrationsDir = path.join(process.cwd(), 'api', 'migrations');
-if (fs.existsSync(migrationsDir)) {
-  const migrations = fs.readdirSync(migrationsDir).filter((file) => file.endsWith('.sql'));
-  const applied = new Set(
-    db.prepare('SELECT name FROM migrations').all().map((row: { name: string }) => row.name)
-  );
+function createMemoryStore(): LeadStore {
+  let nextId = 1;
+  const leads = new Map<string, LeadRecord>();
 
-  for (const file of migrations) {
-    if (applied.has(file)) {
-      continue;
+  return {
+    async insertLead(lead) {
+      const record: LeadRecord = { id: nextId, ...lead };
+      nextId += 1;
+      leads.set(record.download_token, record);
+      return record;
+    },
+    async findLeadByToken(token) {
+      return leads.get(token);
+    },
+    async clearLeads() {
+      leads.clear();
+      nextId = 1;
     }
-    const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-    db.exec(sql);
-    db.prepare('INSERT INTO migrations (name, executed_at) VALUES (?, ?)').run(
-      file,
-      new Date().toISOString()
-    );
+  };
+}
+
+function createPostgresStore(): LeadStore {
+  if (!DATABASE_URL) {
+    throw new Error('DATABASE_URL is required for Postgres mode.');
   }
+
+  const pool = new Pool({
+    connectionString: DATABASE_URL,
+    ssl: DATABASE_URL.includes('sslmode=require') ? { rejectUnauthorized: false } : undefined
+  });
+
+  const migrationSql = fs.readFileSync(migrationsPath, 'utf8');
+
+  const ensureMigrated = async () => {
+    await pool.query(migrationSql);
+  };
+
+  const migrationPromise = ensureMigrated();
+
+  return {
+    async insertLead(lead) {
+      await migrationPromise;
+      const result = await pool.query<LeadRecord>(
+        `
+          INSERT INTO leads (
+            name,
+            email,
+            consent,
+            created_at,
+            download_token,
+            download_expiry,
+            email_sent,
+            opt_in_confirmed
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          RETURNING id,
+            name,
+            email,
+            consent,
+            created_at,
+            download_token,
+            download_expiry,
+            email_sent,
+            opt_in_confirmed
+        `,
+        [
+          lead.name,
+          lead.email,
+          lead.consent,
+          lead.created_at,
+          lead.download_token,
+          lead.download_expiry,
+          lead.email_sent,
+          lead.opt_in_confirmed
+        ]
+      );
+      return result.rows[0];
+    },
+    async findLeadByToken(token) {
+      await migrationPromise;
+      const result = await pool.query<LeadRecord>(
+        `
+          SELECT id,
+            name,
+            email,
+            consent,
+            created_at,
+            download_token,
+            download_expiry,
+            email_sent,
+            opt_in_confirmed
+          FROM leads
+          WHERE download_token = $1
+        `,
+        [token]
+      );
+      return result.rows[0];
+    },
+    async clearLeads() {
+      await migrationPromise;
+      await pool.query('DELETE FROM leads');
+    }
+  };
 }
 
-export function insertLead(lead: Omit<LeadRecord, 'id'>): LeadRecord {
-  const stmt = db.prepare(
-    `
-      INSERT INTO leads (
-        name,
-        email,
-        consent,
-        created_at,
-        download_token,
-        download_expiry,
-        email_sent,
-        opt_in_confirmed
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `
-  );
-  const info = stmt.run(
-    lead.name,
-    lead.email,
-    lead.consent,
-    lead.created_at,
-    lead.download_token,
-    lead.download_expiry,
-    lead.email_sent,
-    lead.opt_in_confirmed
-  );
-  return { id: Number(info.lastInsertRowid), ...lead };
-}
+const store: LeadStore = isMemory ? createMemoryStore() : createPostgresStore();
 
-export function findLeadByToken(token: string): LeadRecord | undefined {
-  return db.prepare('SELECT * FROM leads WHERE download_token = ?').get(token) as
-    | LeadRecord
-    | undefined;
-}
-
-export function clearLeads(): void {
-  db.prepare('DELETE FROM leads').run();
-}
+export const insertLead = store.insertLead;
+export const findLeadByToken = store.findLeadByToken;
+export const clearLeads = store.clearLeads;

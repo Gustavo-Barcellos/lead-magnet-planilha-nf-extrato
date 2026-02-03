@@ -39,15 +39,15 @@ app.post('/api/leads', async (req, res) => {
   const createdAt = new Date();
   const expiry = new Date(createdAt.getTime() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
 
-  const lead = insertLead({
+  const lead = await insertLead({
     name,
     email,
-    consent: consent ? 1 : 0,
+    consent: consent,
     created_at: createdAt.toISOString(),
     download_token: downloadToken,
     download_expiry: expiry.toISOString(),
-    email_sent: 0,
-    opt_in_confirmed: 0
+    email_sent: false,
+    opt_in_confirmed: false
   });
 
   await sendEmail(lead, 'lead-magnet-delivery', DOWNLOAD_FILE);

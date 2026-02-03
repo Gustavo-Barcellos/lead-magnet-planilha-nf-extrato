@@ -7,7 +7,7 @@ let sendEmail: jest.Mock;
 
 beforeAll(async () => {
   process.env.NODE_ENV = 'test';
-  process.env.DATABASE_URL = ':memory:';
+  process.env.DATABASE_URL = 'memory';
 
   jest.resetModules();
   jest.doMock('../api/src/email', () => ({
@@ -56,15 +56,15 @@ describe('Lead API', () => {
 
   it('returns download link for valid tokens', async () => {
     const dbModule = await import('../api/src/db');
-    dbModule.insertLead({
+    await dbModule.insertLead({
       name: 'Maria Silva',
       email: 'maria@empresa.com',
-      consent: 1,
+      consent: true,
       created_at: new Date().toISOString(),
       download_token: 'valid-token',
       download_expiry: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-      email_sent: 0,
-      opt_in_confirmed: 0
+      email_sent: false,
+      opt_in_confirmed: false
     });
 
     const response = await request(app).get('/api/download/valid-token');
