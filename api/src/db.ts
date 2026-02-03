@@ -53,6 +53,12 @@ function createPostgresStore(): LeadStore {
     throw new Error('DATABASE_URL is required for Postgres mode.');
   }
 
+  if (!DATABASE_URL.startsWith('postgres://') && !DATABASE_URL.startsWith('postgresql://')) {
+    throw new Error(
+      'DATABASE_URL must be a Postgres connection string (e.g. postgresql://USER:PASSWORD@HOST:5432/postgres?sslmode=require).'
+    );
+  }
+
   const pool = new Pool({
     connectionString: DATABASE_URL,
     ssl: DATABASE_URL.includes('sslmode=require') ? { rejectUnauthorized: false } : undefined

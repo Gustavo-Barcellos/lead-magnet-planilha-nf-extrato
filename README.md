@@ -50,11 +50,17 @@ TOKEN_EXPIRY_HOURS=24
 
 1. Crie um projeto no Supabase.
 2. Vá em **Settings → Database** e copie a **Connection string** (Postgres).
-3. Ajuste a string para incluir `sslmode=require` (obrigatório em produção).
-4. No `.env`, defina `DATABASE_URL` com a connection string completa.
-5. Inicie o backend com `npm run dev:api`; a tabela `public.leads` será criada automaticamente.
-6. Opcional (produção): crie uma role limitada para o backend e substitua o usuário da connection string para reduzir privilégios.
-7. Habilite backups automáticos no Supabase para retenção dos dados.
+3. Use a **connection string Postgres** (não o Project URL). Ela começa com `postgresql://`.
+4. Ajuste a string para incluir `sslmode=require` (obrigatório em produção).
+5. No `.env`, defina `DATABASE_URL` com a connection string completa.
+6. Inicie o backend com `npm run dev:api`; a tabela `public.leads` será criada automaticamente.
+7. Opcional (produção): crie uma role limitada para o backend e substitua o usuário da connection string para reduzir privilégios.
+8. Habilite backups automáticos no Supabase para retenção dos dados.
+
+### Troubleshooting
+
+- Se o backend acusar erro de `DATABASE_URL`, confirme que você está usando a **connection string Postgres** do Supabase (não o Project URL).
+- Erro do `esbuild` em `dev:api` normalmente indica `node_modules` copiado de outro SO. Solução: apague `node_modules` e `package-lock.json`, depois execute `npm install` novamente no mesmo ambiente.
 
 ### Segurança em produção
 
